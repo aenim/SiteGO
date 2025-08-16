@@ -3,9 +3,10 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"net"
 	"net/textproto"
-	"os"
+	"strconv"
 	"strings"
 )
 
@@ -32,11 +33,7 @@ func main() {
 func handleConnection(conn net.Conn) {
 	//fmt.Print(conn)
 	defer conn.Close()
-	file, err := os.Create("bodylog.txt")
 
-	if err != nil {
-		fmt.Println("Ошибка при создании файла")
-	}
 	reader := bufio.NewReader(conn)                            // записьв буфер
 	requestline, err := textproto.NewReader(reader).ReadLine() // чтение первой строки
 	if err != nil {
@@ -60,13 +57,32 @@ func handleConnection(conn net.Conn) {
 	if err != nil {
 		fmt.Print("ошибка хедера")
 	}
-	file.Write(header)
-	fmt.Println(header)
 
-	// contentLengh, err := strconv.Atoi(requestline)
-	// if err != nil {
-	// 	fmt.Print(" Ошибка Атои   ")
-	// }
+	// fmt.Println(header, "/n")
+
+	// fmt.Println(header.Get("Content-Length")) // размер боди. Если не равен 0 - значит боди есть
+	// fmt.Println(header.Get("Transfer-Encoding"))
+
+	cL := header.Get("Content-Length")
+
+	bodyLength, err := strconv.Atoi(cL)
+
+	// fmt.Println("Это бодилентх ", bodyLength)
+
+	var body []byte
+	if bodyLength > 0 {
+		body = make([]byte, bodyLength)
+
+		// Читаем ровно bodyLength байт
+		_, err = io.ReadFull(reader, body)
+		if err != nil {
+			fmt.Println("Error reading body:", err)
+			return
+		}
+	}
+
+	fmt.Println(body)
+	fmt.Printf("Body (%d bytes): %s\n", bodyLength, string(body))
 
 }
 
