@@ -3,72 +3,71 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"net"
 	"net/textproto"
+	"os"
 	"strings"
 )
 
 func main() {
 	ln, err := net.Listen("tcp", ":8080")
 	if err != nil {
-		panic(err)
+		// handle error
 	}
-
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			fmt.Print("Ошибка ", err)
-			continue
+			// handle error
 		}
-		go handleHTTP(conn)
+		go handleConnection(conn)
+		//go sendCurl()
+
 	}
 }
 
-func handleHTTP(conn net.Conn) {
-	defer conn.Close()                // отложенная инструкция на закрытие соединения
-	reader := bufio.NewReader(conn)   // чтение запросов в буфер
-	tp := textproto.NewReader(reader) //
+// func sendCurl() {
+// 	net.Dial("http", "localhost:8080")
+// }
 
-	// Читаем первую строку (Request-Line)
-	requestLine, err := tp.ReadLine()
+func handleConnection(conn net.Conn) {
+	//fmt.Print(conn)
+	defer conn.Close()
+	file, err := os.Create("bodylog.txt")
+
 	if err != nil {
-		fmt.Println("Error reading request:", err)
-		return
+		fmt.Println("Ошибка при создании файла")
+	}
+	reader := bufio.NewReader(conn)                            // записьв буфер
+	requestline, err := textproto.NewReader(reader).ReadLine() // чтение первой строки
+	if err != nil {
+		fmt.Print("!!! ошибка!!! ")
 	}
 
-	fmt.Print(requestLine)
-
-	parts := strings.Split(requestLine, " ") // разделяем запрос по пробелам
+	parts := strings.Split(requestline, " ") // сплит первой строки по пробелу
 	if len(parts) != 3 {
-		fmt.Println("Malformed request line") // если в запросе не 3 слова после сплита значит чтото не так
-		return
+		fmt.Print("НЕПРАВИЛЬНЫЙ ЗАПРОС")
 	}
 
-	method, path, version := parts[0], parts[1], parts[2] //
-	fmt.Printf("Method: %s, Path: %s, Version: %s\n", method, path, version)
+	Method, Path, Protocol := parts[0], parts[1], parts[2]
+	if 2 > 3 {
+		fmt.Println(Method)
+		fmt.Println(Path)
+		fmt.Println(Protocol)
 
-	header, err := tp.ReadMIMEHeader() // чтение заголовка
+	}
+
+	header, err := textproto.NewReader(reader).ReadMIMEHeader()
 	if err != nil {
-		log.Fatal(err)
+		fmt.Print("ошибка хедера")
 	}
-	fmt.Println("Headers ", header)
+	file.Write(header)
+	fmt.Println(header)
 
-	response := "HTTP/1.1 200 OK\r\n" +
-		"Content-Type: text/plain\r\n" +
-		"Connection: close\r\n" +
-		"\r\n" +
-		fmt.Sprintf("You requested %s %s\n", method, path)
-
-	conn.Write([]byte(response))
+	// contentLengh, err := strconv.Atoi(requestline)
+	// if err != nil {
+	// 	fmt.Print(" Ошибка Атои   ")
+	// }
 
 }
 
-// добавить обработку соединения гарантированное закрытие сессии ОК
-// буферизированный читатель ОК
-// читатель НТТР заголовков
-// чтение зароса
-// Читаем первую строку HTTP-запроса, которая имеет формат: МЕТОД URI ВЕРСИЯ_HTTP
-// Разбиваем строку запроса на части.
-// чтение заголовков
-// формирование и отправка ответа
+// получить нттр запрос, сохранить, прочитать заголовок и боди, вывести на экран, ответить
